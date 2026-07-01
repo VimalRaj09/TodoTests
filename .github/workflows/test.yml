@@ -28,6 +28,10 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
+          cache-dependency-path: |
+            app-repo/backend/package-lock.json
+            app-repo/frontend/package-lock.json
+            test-repo/package-lock.json
 
       # Backend Setup
       - name: Install Backend Dependencies
@@ -115,6 +119,7 @@ jobs:
       - name: Comment on PR
         if: github.event_name == 'pull_request' && always()
         uses: actions/github-script@v6
+        continue-on-error: true
         with:
           script: |
             github.rest.issues.createComment({
