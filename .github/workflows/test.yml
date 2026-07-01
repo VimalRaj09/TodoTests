@@ -11,19 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    services:
-      backend:
-        image: node:18
-        options: |
-          -w /app
-          -v ${{ github.workspace }}/todo-app/backend:/app
-        ports:
-          - 3000:3000
-        env:
-          PORT: 3000
-
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Tests Repo
+        uses: actions/checkout@v3
+
+      - name: Checkout App Repo (TodoAPP)
+        uses: actions/checkout@v3
+        with:
+          repository: VimalRaj09/TodoAPP
+          path: todo-app
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -45,10 +41,10 @@ jobs:
         run: |
           for i in {1..30}; do
             if curl -f http://localhost:3000/api/health; then
-              echo "Backend is ready!"
+              echo "✅ Backend is ready!"
               exit 0
             fi
-            echo "Waiting for backend... ($i/30)"
+            echo "⏳ Waiting for backend... ($i/30)"
             sleep 1
           done
           exit 1
@@ -68,19 +64,15 @@ jobs:
           sleep 3
 
       - name: Install Test Dependencies
-        working-directory: ./todo-app-tests
         run: npm ci
 
       - name: Install Playwright Browsers
-        working-directory: ./todo-app-tests
         run: npx playwright install chromium
 
       - name: Run Functional Tests (5 tests)
-        working-directory: ./todo-app-tests
         run: npx playwright test tests/functional-tests.spec.js --reporter=json --reporter=html
 
       - name: Run Guardrail Tests (2 tests)
-        working-directory: ./todo-app-tests
         run: npx playwright test tests/guardrail-tests.spec.js --reporter=json --reporter=html
 
       - name: Upload Test Results
@@ -88,7 +80,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: playwright-report
-          path: todo-app-tests/playwright-report/
+          path: playwright-report/
           retention-days: 30
 
       - name: Comment on PR
@@ -102,8 +94,8 @@ jobs:
               repo: context.repo.repo,
               body: `✅ **Test Results**
               
-              - 🧪 E2E Tests: See artifacts for detailed report
-              - 🛡️  Guardrails: Safety & performance bounds validated
+              - 🧪 E2E Tests (5): Functional testing
+              - 🛡️ Guardrails (2): Safety & performance bounds
               - 📊 Full report: Check Actions tab
               `
             })
