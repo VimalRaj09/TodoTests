@@ -5,26 +5,27 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Tests Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: test-repo
 
       - name: Checkout App Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: VimalRaj09/TodoAPP
           path: app-repo
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
@@ -150,6 +151,16 @@ jobs:
           name: playwright-report
           path: test-repo/playwright-report/
           retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-repo/test-results/
+          retention-days: 30
+          if-no-files-found: ignore
 
       - name: Test Summary
         if: always()
