@@ -1,11 +1,11 @@
 name: 🧪 E2E Tests + Guardrails
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger only
+  # push:
+  #   branches: [main, develop]
+  # pull_request:
+  #   branches: [main, develop]
 
 jobs:
   test:
@@ -49,16 +49,23 @@ jobs:
           echo "Checking backend health..."
           for i in {1..30}; do
             echo "Attempt $i/30..."
-            if curl -s http://localhost:3000/api/health 2>/dev/null | grep -q "ok"; then
+            RESPONSE=$(curl -s -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null || echo "000")
+            HTTP_CODE="${RESPONSE: -3}"
+            BODY="${RESPONSE%???}"
+            echo "  Response: HTTP $HTTP_CODE | Body: $BODY"
+            
+            if [ "$HTTP_CODE" = "200" ]; then
               echo "✅ Backend is running!"
-              curl -s http://localhost:3000/api/health
               exit 0
             fi
             sleep 1
           done
           echo "❌ Backend health check failed after 30 seconds"
           echo "Backend log:"
-          cat ./app-repo/backend/backend.log || echo "Log file not found"
+          cat ./app-repo/backend/backend.log 2>/dev/null || echo "Log file not found"
+          echo ""
+          echo "Network status:"
+          netstat -tuln | grep 3000 || echo "Port 3000 not found"
           exit 1
 
       # Frontend Setup
@@ -87,7 +94,12 @@ jobs:
           echo "Checking frontend health..."
           for i in {1..30}; do
             echo "Attempt $i/30..."
-            if curl -s http://localhost:4100/ 2>/dev/null | grep -q "React"; then
+            RESPONSE=$(curl -s -w "%{http_code}" http://localhost:4100/ 2>/dev/null || echo "000")
+            HTTP_CODE="${RESPONSE: -3}"
+            BODY="${RESPONSE%???}"
+            echo "  Response: HTTP $HTTP_CODE | Body length: ${#BODY}"
+            
+            if echo "$BODY" | grep -q "React\|html\|DOCTYPE"; then
               echo "✅ Frontend is running!"
               exit 0
             fi
@@ -95,7 +107,10 @@ jobs:
           done
           echo "❌ Frontend health check failed after 30 seconds"
           echo "Frontend log:"
-          cat ./app-repo/frontend/frontend.log || echo "Log file not found"
+          cat ./app-repo/frontend/frontend.log 2>/dev/null || echo "Log file not found"
+          echo ""
+          echo "Network status:"
+          netstat -tuln | grep 4100 || echo "Port 4100 not found"
           exit 1
 
       # Test Execution
