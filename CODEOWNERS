@@ -1,0 +1,10 @@
+# Automation engineer is code owner for all files
+# PRs must be approved by automation engineer before merge
+# Tests must pass before merge (enforced by branch protection)
+
+* @automation-engineer
+
+# Specific rules for test changes
+tests/ @automation-engineer
+agents/ @automation-engineer
+.github/workflows/ @automation-engineer
