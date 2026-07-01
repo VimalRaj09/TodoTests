@@ -37,21 +37,27 @@ jobs:
       - name: Start Backend
         working-directory: ./app-repo/backend
         run: |
+          echo "Starting backend server..."
           npm start > backend.log 2>&1 &
-          sleep 3
+          BACKEND_PID=$!
+          echo "Backend PID: $BACKEND_PID"
+          sleep 2
 
       - name: Verify Backend Health
         run: |
           echo "Checking backend health..."
-          for i in {1..20}; do
-            if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
-              echo "✅ Backend is running"
+          for i in {1..30}; do
+            echo "Attempt $i/30..."
+            if curl -s http://localhost:3000/api/health 2>/dev/null | grep -q "ok"; then
+              echo "✅ Backend is running!"
+              curl -s http://localhost:3000/api/health
               exit 0
             fi
-            echo "Attempt $i/20..."
             sleep 1
           done
-          echo "❌ Backend health check failed"
+          echo "❌ Backend health check failed after 30 seconds"
+          echo "Backend log:"
+          cat ./app-repo/backend/backend.log || echo "Log file not found"
           exit 1
 
       # Frontend Setup
@@ -69,9 +75,27 @@ jobs:
       - name: Start Frontend Server
         working-directory: ./app-repo/frontend
         run: |
+          echo "Starting frontend server on port 4100..."
           npx serve -s build -l 4100 > frontend.log 2>&1 &
-          sleep 4
-          echo "✅ Frontend started on :4100"
+          FRONTEND_PID=$!
+          echo "Frontend PID: $FRONTEND_PID"
+          sleep 2
+
+      - name: Verify Frontend Health
+        run: |
+          echo "Checking frontend health..."
+          for i in {1..30}; do
+            echo "Attempt $i/30..."
+            if curl -s http://localhost:4100/ 2>/dev/null | grep -q "React"; then
+              echo "✅ Frontend is running!"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "❌ Frontend health check failed after 30 seconds"
+          echo "Frontend log:"
+          cat ./app-repo/frontend/frontend.log || echo "Log file not found"
+          exit 1
 
       # Test Execution
       - name: Install Test Dependencies
@@ -86,7 +110,10 @@ jobs:
         working-directory: ./test-repo
         run: |
           echo "🧪 Running 5 functional tests..."
-          npx playwright test tests/functional-tests.spec.js --reporter=html --reporter=json 2>&1 || EXIT_CODE=$?
+          npx playwright test tests/functional-tests.spec.js \
+            --reporter=html \
+            --reporter=list \
+            2>&1 | tee test-functional.log || EXIT_CODE=$?
           echo "Functional tests exit code: ${EXIT_CODE:-0}"
         continue-on-error: true
 
@@ -94,9 +121,27 @@ jobs:
         working-directory: ./test-repo
         run: |
           echo "🛡️ Running 2 guardrail tests..."
-          npx playwright test tests/guardrail-tests.spec.js --reporter=html --reporter=json 2>&1 || EXIT_CODE=$?
+          npx playwright test tests/guardrail-tests.spec.js \
+            --reporter=html \
+            --reporter=list \
+            2>&1 | tee test-guardrail.log || EXIT_CODE=$?
           echo "Guardrail tests exit code: ${EXIT_CODE:-0}"
         continue-on-error: true
+
+      - name: Show Test Logs on Failure
+        if: failure()
+        run: |
+          echo "=== Functional Test Log ==="
+          cat ./test-repo/test-functional.log || echo "No functional test log"
+          echo ""
+          echo "=== Guardrail Test Log ==="
+          cat ./test-repo/test-guardrail.log || echo "No guardrail test log"
+          echo ""
+          echo "=== Backend Log ==="
+          cat ./app-repo/backend/backend.log || echo "No backend log"
+          echo ""
+          echo "=== Frontend Log ==="
+          cat ./app-repo/frontend/frontend.log || echo "No frontend log"
 
       - name: Upload Test Reports
         if: always()
