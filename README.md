@@ -4,12 +4,11 @@
 
 ## What's Here
 
-- **7 passing E2E tests** (Playwright)
+- **7 passing E2E tests** (Playwright) ✅
   - 5 functional tests (register, create task, delete task, login fails, empty form validation)
   - 2 guardrail tests (content safety, response bounds)
-- **GitHub Actions CI** (runs on push, blocks merge if tests fail)
 - **Test generation agent** (Groq-based, generates test cases from app code)
-- **Gating via CODEOWNERS** (automation engineer reviews all test changes)
+- **Gating mechanism** via CODEOWNERS (automation engineer reviews all test changes)
 
 ## Quick Start
 
@@ -22,20 +21,31 @@ npx playwright install
 npm test
 ```
 
-**Expected:** 7 tests pass in ~10 seconds.
+**Expected:** 7 tests pass in ~10 seconds ✅
 
 ---
 
-## How Tests Gate Merges
+## How To Use (Local Development Workflow)
 
-1. **Developer makes PR** in app repo (frontend or backend)
-2. **GitHub Actions runs** (test.yml workflow)
-3. **All 7 tests must pass**
-4. **Automation engineer reviews** (CODEOWNERS) changes to test code
-5. **PR merges only if tests pass + automation engineer approves**
+1. **In one terminal, start the app** (TodoAPP repo):
+   ```bash
+   # Backend (:3000)
+   cd ../TodoAPP/backend && npm start
+   
+   # Frontend (:4100) - separate terminal
+   cd ../TodoAPP/frontend && npm start
+   ```
 
-See `.github/workflows/test.yml` for workflow.  
-See `CODEOWNERS` for gating roles.
+2. **In another terminal, run tests** (this repo):
+   ```bash
+   npm test
+   ```
+
+3. **Make changes to app or tests** → rerun `npm test` ✅
+
+**Gating Mechanism:**
+- All test changes require `CODEOWNERS` review (automation engineer)
+- See `CODEOWNERS` file for setup
 
 ---
 
@@ -81,11 +91,12 @@ See `AGENT_OUTPUT.md` for a real example of the agent running on TodoPage.js.
 │   └── test-generator.js            (Prompt templates)
 ├── guardrails/
 │   └── validators.js                (Guardrail logic)
-├── .github/workflows/
-│   └── test.yml                     (GitHub Actions CI)
+├── .github/
+│   └── CODEOWNERS                   (Gating: automation eng owns tests)
 ├── playwright.config.js
-├── CODEOWNERS                       (Gating: automation eng owns tests)
 ├── WRITEUP.md                       (Approach, trade-offs, next steps)
+├── AGENT_OUTPUT.md                  (Proof: agent generated 8 working tests)
+├── SUBMISSION.md                    (Assignment requirements checklist)
 └── README.md                        (This file)
 ```
 
